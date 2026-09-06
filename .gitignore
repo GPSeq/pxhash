@@ -1,0 +1,38 @@
+# CMake/build output
+build/
+build-*/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+CTestTestfile.cmake
+DartConfiguration.tcl
+cmake_install.cmake
+install_manifest.txt
+
+# Generated binaries and local examples
+pxhash_tests
+pxhash_bench
+pxhash_example_*
+*.pxh
+*.bin
+
+# Generated docs
+docs/doxygen/
+
+# Editor/OS files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Compiler artifacts
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dylib
+*.dll
+*.exe

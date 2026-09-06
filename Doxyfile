@@ -1,0 +1,13 @@
+PROJECT_NAME           = "PXHash"
+PROJECT_BRIEF          = "High-performance C++20 open-addressing hash table"
+OUTPUT_DIRECTORY       = docs/doxygen
+INPUT                  = README.md include docs
+USE_MDFILE_AS_MAINPAGE = README.md
+RECURSIVE              = YES
+EXTRACT_ALL            = YES
+GENERATE_HTML          = YES
+GENERATE_LATEX         = NO
+QUIET                  = YES
+WARN_IF_UNDOCUMENTED   = NO
+WARN_AS_ERROR          = NO
+HAVE_DOT               = YES
