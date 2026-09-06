@@ -15,3 +15,5 @@ The control-byte array stores an extra mirrored tail of `GROUP_SIZE` bytes. This
 PXHash mixes the user-provided hash before using it for the probe index and fingerprint. This helps with weak integer hashes while still allowing custom hash functions.
 
 The current table keeps slot storage separate from control bytes and constructs values only for occupied slots.
+
+`ConcurrentPXHash` is a separate sharded wrapper around `PXHash`. Each shard owns one table and one `std::shared_mutex`. Mutations take an exclusive lock for one shard, while copy-out reads take a shared lock for one shard.

@@ -55,3 +55,29 @@ jobs:
         env:
           LSAN_OPTIONS: detect_leaks=0
         run: ctest --test-dir build-sanitize --output-on-failure
+
+  benchmark-smoke:
+    name: Linux benchmark smoke
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install benchmark dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libbenchmark-dev libabsl-dev
+
+      - name: Configure
+        run: >
+          cmake -S . -B build-bench
+          -DCMAKE_BUILD_TYPE=Release
+          -DPXHASH_BUILD_BENCHMARKS=ON
+          -DPXHASH_BUILD_TESTS=OFF
+          -DPXHASH_BUILD_EXAMPLES=OFF
+
+      - name: Build benchmark
+        run: cmake --build build-bench --target pxhash_bench --parallel 2
+
+      - name: Run benchmark smoke
+        run: ./build-bench/pxhash_bench --benchmark_min_time=0.01s

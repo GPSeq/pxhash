@@ -1,7 +1,7 @@
 # PXHash
 
-[![Tests](https://github.com/lutfia95/pxhash/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/lutfia95/pxhash/actions/workflows/tests.yml)
-[![Docs](https://github.com/lutfia95/pxhash/actions/workflows/docs.yml/badge.svg?branch=main)](https://github.com/lutfia95/pxhash/actions/workflows/docs.yml)
+[![Tests](https://github.com/lutfia95/hyperclusterCPP/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/lutfia95/hyperclusterCPP/actions/workflows/tests.yml)
+[![Docs](https://github.com/lutfia95/hyperclusterCPP/actions/workflows/docs.yml/badge.svg?branch=main)](https://github.com/lutfia95/hyperclusterCPP/actions/workflows/docs.yml)
 [![C++20](https://img.shields.io/badge/C%2B%2B-20-00599C?logo=cplusplus&logoColor=white)](https://en.cppreference.com/w/cpp/20)
 [![CMake](https://img.shields.io/badge/build-CMake-064F8C?logo=cmake&logoColor=white)](https://cmake.org/)
 [![Doxygen](https://img.shields.io/badge/docs-Doxygen-2C4AA8)](https://www.doxygen.nl/)
@@ -46,8 +46,8 @@ brew install cmake google-benchmark abseil
 ## Configure and build everything available
 
 ```bash
-git clone https://github.com/lutfia95/pxhash.git
-cd pxhash
+git clone https://github.com/lutfia95/hyperclusterCPP.git
+cd hyperclusterCPP
 cmake -S . -B build
 cmake --build build -j
 ```
@@ -59,6 +59,7 @@ By default, CMake tries to generate:
 - `pxhash_example_basic`
 - `pxhash_example_custom_key`
 - `pxhash_example_binary_persistence`
+- `pxhash_example_concurrent`
 
 The benchmark target is only generated if Google Benchmark is installed and discoverable by CMake. If it is missing, configure will print a warning and only the test target will be created.
 
@@ -139,6 +140,25 @@ int main() {
 }
 ```
 
+## Iteration
+
+```cpp
+for (const auto& entry : map) {
+    std::cout << entry.key << " => " << entry.value << "\n";
+}
+```
+
+## Concurrent Wrapper
+
+The base `PXHash` container is not internally synchronized. For straightforward multi-threaded use, include the sharded wrapper:
+
+```cpp
+#include "pxhash/concurrent_pxhash.hpp"
+
+pxhash::ConcurrentPXHash<std::uint64_t, std::uint64_t> map(64);
+map.insert(1, 2);
+```
+
 ## Binary Persistence
 
 `PXHash` can save to and load from a compact binary file when both `KeyType` and `ValueType` are trivially copyable, for example `uint64_t`, POD structs, or fixed-size IDs.
@@ -205,3 +225,4 @@ See [TODO.md](TODO.md) for the 13-step project checklist.
 - [Benchmarks](docs/benchmarks.md)
 - [Thread safety](docs/thread_safety.md)
 - [Serialization](docs/serialization.md)
+- [Release process](docs/release.md)

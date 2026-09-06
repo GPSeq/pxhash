@@ -97,6 +97,10 @@ if (PXHASH_BUILD_EXAMPLES)
   add_executable(pxhash_example_binary_persistence examples/binary_persistence.cpp)
   target_link_libraries(pxhash_example_binary_persistence PRIVATE pxhash::pxhash)
   pxhash_apply_warnings(pxhash_example_binary_persistence)
+
+  add_executable(pxhash_example_concurrent examples/concurrent_usage.cpp)
+  target_link_libraries(pxhash_example_concurrent PRIVATE pxhash::pxhash)
+  pxhash_apply_warnings(pxhash_example_concurrent)
 endif()
 
 install(TARGETS pxhash EXPORT pxhashTargets)

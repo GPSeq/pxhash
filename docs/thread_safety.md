@@ -1,6 +1,6 @@
 # Thread Safety
 
-PXHash is not a concurrent hash table.
+The base `PXHash` container is not internally synchronized.
 
 Rules:
 
@@ -8,4 +8,11 @@ Rules:
 - Any mutation must be externally synchronized.
 - References and pointers returned by `find` can be invalidated by `insert`, `erase`, `clear`, `reserve`, and rehashing.
 
-If concurrency becomes a project goal, the next design should be explicit: either a sharded locking wrapper, a read-mostly snapshot design, or a separate lock-free container. The current container should not be advertised as concurrent.
+PXHash also provides `pxhash::ConcurrentPXHash`, a sharded locking wrapper for straightforward multi-threaded use.
+
+`ConcurrentPXHash` rules:
+
+- `insert`, `insert_or_assign`, `try_emplace`, `erase`, `clear`, and `reserve` synchronize the affected shard.
+- `find(key, out)` copies the value while holding a shared shard lock.
+- `contains` holds a shared shard lock.
+- Pointer-returning lookup is intentionally not exposed by the concurrent wrapper.

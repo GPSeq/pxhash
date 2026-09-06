@@ -8,6 +8,7 @@
 #include <istream>
 #include <iterator>
 #include <limits>
+#include <memory>
 #include <optional>
 #include <ostream>
 #include <stdexcept>
@@ -81,6 +82,15 @@ struct Slot {
   K key;
   V value;
 };
+
+namespace detail {
+
+template <class Hash, class Eq, class KeyType, class LookupKey, class SizeType>
+inline constexpr bool is_lookup_compatible_v =
+    std::is_invocable_r_v<SizeType, const Hash&, const LookupKey&> &&
+    std::is_invocable_r_v<bool, const Eq&, const KeyType&, const LookupKey&>;
+
+}  // namespace detail
 
 template <typename KeyType, typename ValueType, typename Hash = std::hash<KeyType>,
           typename Eq = std::equal_to<KeyType>,
@@ -221,7 +231,8 @@ public:
   template <class KArg, class VArg>
   bool insert_or_assign(KArg&& key, VArg&& value) {
     maybe_grow_for_insert();
-    return insert_or_assign_impl(std::forward<KArg>(key), std::forward<VArg>(value));
+    KeyType stored_key(std::forward<KArg>(key));
+    return insert_or_assign_impl(std::move(stored_key), std::forward<VArg>(value));
   }
 
   template <class... Args>
@@ -260,14 +271,16 @@ public:
   }
 
   template <class LookupKey, class = std::enable_if_t<!std::is_same_v<std::decay_t<LookupKey>, KeyType> &&
-                                                      is_transparent_lookup_v<LookupKey>>>
+                                                      detail::is_lookup_compatible_v<Hash, Eq, KeyType,
+                                                                                     LookupKey, size_type>>>
   ValueType* find(const LookupKey& key) {
     const size_type pos = find_slot(key);
     return pos == npos() ? nullptr : &slots_[pos]->value;
   }
 
   template <class LookupKey, class = std::enable_if_t<!std::is_same_v<std::decay_t<LookupKey>, KeyType> &&
-                                                      is_transparent_lookup_v<LookupKey>>>
+                                                      detail::is_lookup_compatible_v<Hash, Eq, KeyType,
+                                                                                     LookupKey, size_type>>>
   const ValueType* find(const LookupKey& key) const {
     const size_type pos = find_slot(key);
     return pos == npos() ? nullptr : &slots_[pos]->value;
@@ -281,7 +294,8 @@ public:
   }
 
   template <class LookupKey, class = std::enable_if_t<!std::is_same_v<std::decay_t<LookupKey>, KeyType> &&
-                                                      is_transparent_lookup_v<LookupKey>>>
+                                                      detail::is_lookup_compatible_v<Hash, Eq, KeyType,
+                                                                                     LookupKey, size_type>>>
   bool find(const LookupKey& key, ValueType& out_value) const {
     const ValueType* value = find(key);
     if (value == nullptr) return false;
@@ -294,7 +308,8 @@ public:
   }
 
   template <class LookupKey, class = std::enable_if_t<!std::is_same_v<std::decay_t<LookupKey>, KeyType> &&
-                                                      is_transparent_lookup_v<LookupKey>>>
+                                                      detail::is_lookup_compatible_v<Hash, Eq, KeyType,
+                                                                                     LookupKey, size_type>>>
   [[nodiscard]] bool contains(const LookupKey& key) const {
     return find(key) != nullptr;
   }
@@ -367,7 +382,7 @@ public:
       if (magic != kBinaryMagic || version != kBinaryVersion || reserved != 0) return false;
       if (entry_count > static_cast<std::uint64_t>(std::numeric_limits<size_type>::max())) return false;
 
-      PXHash tmp(0, hasher_, eq_);
+      PXHash tmp(0, hasher_, eq_, allocator_);
       tmp.reserve(static_cast<size_type>(entry_count));
 
       for (std::uint64_t i = 0; i < entry_count; ++i) {
@@ -403,11 +418,6 @@ private:
   static constexpr bool is_binary_serializable() {
     return std::is_trivially_copyable_v<KeyType> && std::is_trivially_copyable_v<ValueType>;
   }
-
-  template <class LookupKey>
-  static constexpr bool is_transparent_lookup_v =
-      std::is_invocable_r_v<size_type, const Hash&, const LookupKey&> &&
-      std::is_invocable_r_v<bool, const Eq&, const KeyType&, const LookupKey&>;
 
   static bool is_full_ctrl(std::uint8_t c) noexcept {
     return c != EMPTY && c != DELETED;
@@ -458,7 +468,7 @@ private:
   }
 
   void rehash(size_type new_cap) {
-    PXHash tmp(0, hasher_, eq_);
+    PXHash tmp(0, hasher_, eq_, allocator_);
     tmp.init_table(new_cap);
 
     for (size_type i = 0; i < capacity_; ++i) {

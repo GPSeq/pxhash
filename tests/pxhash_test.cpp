@@ -5,9 +5,13 @@
 #include <fstream>
 #include <random>
 #include <string>
+#include <string_view>
+#include <thread>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
+#include "pxhash/concurrent_pxhash.hpp"
 #include "pxhash/pxhash.hpp"
 
 namespace {
@@ -20,6 +24,54 @@ struct NoDefaultValue {
   explicit NoDefaultValue(int v) : value(v) {}
   int value;
 };
+
+struct TransparentStringHash {
+  using is_transparent = void;
+
+  std::size_t operator()(std::string_view value) const noexcept {
+    return std::hash<std::string_view>{}(value);
+  }
+
+  std::size_t operator()(const std::string& value) const noexcept {
+    return (*this)(std::string_view(value));
+  }
+};
+
+struct TransparentStringEqual {
+  using is_transparent = void;
+
+  bool operator()(std::string_view lhs, std::string_view rhs) const noexcept {
+    return lhs == rhs;
+  }
+};
+
+template <class T>
+struct CountingAllocator {
+  using value_type = T;
+
+  CountingAllocator() = default;
+
+  template <class U>
+  CountingAllocator(const CountingAllocator<U>&) {}
+
+  T* allocate(std::size_t n) {
+    return std::allocator<T>{}.allocate(n);
+  }
+
+  void deallocate(T* p, std::size_t n) noexcept {
+    std::allocator<T>{}.deallocate(p, n);
+  }
+};
+
+template <class T, class U>
+bool operator==(const CountingAllocator<T>&, const CountingAllocator<U>&) {
+  return true;
+}
+
+template <class T, class U>
+bool operator!=(const CountingAllocator<T>&, const CountingAllocator<U>&) {
+  return false;
+}
 
 void test_insert_find_and_update() {
   pxhash::PXHash<std::string, int> map;
@@ -42,6 +94,42 @@ void test_insert_find_and_update() {
   assert(map.find("beta", value));
   assert(value == 2);
   assert(!map.find("gamma", value));
+}
+
+void test_iterators_visit_entries() {
+  pxhash::PXHash<int, int> map;
+  map.insert(1, 10);
+  map.insert(2, 20);
+  map.insert(3, 30);
+
+  int key_sum = 0;
+  int value_sum = 0;
+  for (const auto& entry : map) {
+    key_sum += entry.key;
+    value_sum += entry.value;
+  }
+
+  assert(key_sum == 6);
+  assert(value_sum == 60);
+  assert(map.begin() != map.end());
+}
+
+void test_heterogeneous_string_lookup() {
+  pxhash::PXHash<std::string, int, TransparentStringHash, TransparentStringEqual> map;
+  map.insert("alpha", 10);
+
+  std::string_view lookup = "alpha";
+  assert(map.contains(lookup));
+  assert(map.find(lookup) != nullptr);
+  assert(*map.find(lookup) == 10);
+}
+
+void test_custom_allocator_instantiation() {
+  using Slot = pxhash::Slot<int, int>;
+  pxhash::PXHash<int, int, std::hash<int>, std::equal_to<int>, CountingAllocator<Slot>> map;
+
+  map.insert(1, 2);
+  assert(map.contains(1));
 }
 
 void test_operator_brackets_and_clear() {
@@ -227,6 +315,29 @@ void test_randomized_against_unordered_map() {
   }
 }
 
+void test_concurrent_wrapper() {
+  pxhash::ConcurrentPXHash<int, int> map(8);
+  std::vector<std::thread> threads;
+
+  for (int thread_id = 0; thread_id < 4; ++thread_id) {
+    threads.emplace_back([thread_id, &map] {
+      for (int i = 0; i < 250; ++i) {
+        const int key = thread_id * 1000 + i;
+        map.insert(key, key * 2);
+      }
+    });
+  }
+
+  for (auto& thread : threads) thread.join();
+
+  assert(map.size() == 1000);
+  int value = 0;
+  assert(map.find(1001, value));
+  assert(value == 2002);
+  assert(map.erase(1001));
+  assert(!map.contains(1001));
+}
+
 void test_binary_roundtrip_for_trivial_types() {
   const char* path = "pxhash_roundtrip.bin";
 
@@ -287,6 +398,9 @@ void test_binary_serialization_rejects_non_trivial_types() {
 
 int main() {
   test_insert_find_and_update();
+  test_iterators_visit_entries();
+  test_heterogeneous_string_lookup();
+  test_custom_allocator_instantiation();
   test_operator_brackets_and_clear();
   test_try_emplace_supports_non_default_constructible_values();
   test_tail_wraparound_collision_survives_rehash();
@@ -296,6 +410,7 @@ int main() {
   test_move_insert_support();
   test_copy_support();
   test_randomized_against_unordered_map();
+  test_concurrent_wrapper();
   test_binary_roundtrip_for_trivial_types();
   test_binary_load_rejects_corrupt_or_trailing_data();
   test_binary_serialization_rejects_non_trivial_types();
