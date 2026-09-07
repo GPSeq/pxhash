@@ -214,10 +214,6 @@ target_link_libraries(my_target PRIVATE pxhash::pxhash)
 
 MIT
 
-## Roadmap
-
-See [TODO.md](TODO.md) for the 13-step project checklist.
-
 ## Documentation
 
 - [API](docs/api.md)
