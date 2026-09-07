@@ -46,8 +46,8 @@ brew install cmake google-benchmark abseil
 ## Configure and build everything available
 
 ```bash
-git clone https://github.com/lutfia95/hyperclusterCPP.git
-cd hyperclusterCPP
+git clone https://github.com/GPSeq/pxhash.git
+cd pxhash
 cmake -S . -B build
 cmake --build build -j
 ```
