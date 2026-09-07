@@ -216,6 +216,39 @@ MIT
 
 ## Documentation
 
+### Build the Doxygen documentation locally
+
+Install Doxygen and Graphviz. On Ubuntu or Debian:
+
+```bash
+sudo apt update
+sudo apt install -y doxygen graphviz
+```
+
+On macOS with Homebrew:
+
+```bash
+brew install doxygen graphviz
+```
+
+From the repository root, generate the documentation with:
+
+```bash
+doxygen Doxyfile
+```
+
+The HTML documentation is written to `docs/doxygen/html`. Open
+`docs/doxygen/html/index.html` directly, or serve it locally:
+
+```bash
+python3 -m http.server 8000 --directory docs/doxygen/html
+```
+
+Then visit <http://localhost:8000>. The generated `docs/doxygen/` directory is
+ignored by Git. On pushes to `main`, the Docs workflow builds the same output
+and deploys it when GitHub Pages is enabled with **GitHub Actions** as its
+publishing source.
+
 - [API](docs/api.md)
 - [Design](docs/design.md)
 - [Benchmarks](docs/benchmarks.md)
